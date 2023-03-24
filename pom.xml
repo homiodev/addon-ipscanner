@@ -13,6 +13,10 @@
   <modelVersion>4.0.0</modelVersion>
   <name>Angry Ip Scanner</name>
   <packaging>jar</packaging>
+  
+  <properties>
+    <category>Other</category>
+  </properties>
 
   <parent>
     <artifactId>addon-parent</artifactId>
