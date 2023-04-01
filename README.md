@@ -1,3 +1,5 @@
+[![GitHub Release][releases-shield]][releases]
+
 ## Angry IP Scanner
 
 ##### Fast and friendly network scanner
@@ -16,3 +18,6 @@ It is widely used by network administrators and just curious users around the wo
 enterprises, banks, and government agencies.
 
 It runs on Linux, Windows, and Mac OS X, possibly supporting other platforms as well.
+
+[releases-shield]: https://img.shields.io/github/v/release/homiodev/addon-gdrive.svg
+[releases]: https://github.com/homiodev/addon-gdrive/releases
