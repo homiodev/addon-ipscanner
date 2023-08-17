@@ -2,14 +2,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <artifactId>addon-ipscanner</artifactId>
   
-  <description>Angry Ip Scanner</description>
   <modelVersion>4.0.0</modelVersion>
   <name>Angry Ip Scanner</name>
   <packaging>jar</packaging>
-
-  <properties>
-    <category>Tools</category>
-  </properties>
 
   <parent>
     <artifactId>addon-parent</artifactId>
