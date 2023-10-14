@@ -1,15 +1,16 @@
 package net.azib.ipscan.util;
 
+import static org.apache.commons.io.IOUtils.closeQuietly;
+
 import java.io.Closeable;
 import java.net.DatagramSocket;
 import java.net.Socket;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static net.azib.ipscan.util.IOUtils.closeQuietly;
-
 public class ThreadResourceBinder<T> {
-  private Map<Long, T> resources = new ConcurrentHashMap<>(256);
+
+  private final Map<Long, T> resources = new ConcurrentHashMap<>(256);
 
   public T bind(T resource) {
     resources.put(Thread.currentThread().getId(), resource);

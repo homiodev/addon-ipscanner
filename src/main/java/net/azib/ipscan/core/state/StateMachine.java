@@ -8,37 +8,30 @@ package net.azib.ipscan.core.state;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import lombok.Getter;
 
 /**
  * Generic StateMachine implementation.
  * It holds the current state and performs transitions with corresponding methods.
- * <p/>
  * Note: the class is abstract because notification of listeners often should happen in the correct thread,
  * so subclasses should provide this functionality.
  *
  * @author Anton Keks
  */
 public abstract class StateMachine {
-	
+
 	public enum Transition {INIT, START, STOP, NEXT, COMPLETE, RESET, RESCAN, CONTINUE}
-	
-	private volatile ScanningState state = ScanningState.IDLE;
-	
-	private ReentrantReadWriteLock listenersLock = new ReentrantReadWriteLock();
-	private List<StateTransitionListener> transitionListeners = new ArrayList<>();
-	
+
+	private volatile @Getter ScanningState state = ScanningState.IDLE;
+
+	private final ReentrantReadWriteLock listenersLock = new ReentrantReadWriteLock();
+	private final List<StateTransitionListener> transitionListeners = new ArrayList<>();
+
 	/**
 	 * @return true if current state is as specified
 	 */
 	public boolean inState(ScanningState state) {
 		return this.state == state;
-	}
-	
-	/**
-	 * @return current state
-	 */
-	public ScanningState getState() {
-		return state;
 	}
 
 	/**
@@ -53,7 +46,7 @@ public abstract class StateMachine {
 			listenersLock.writeLock().unlock();
 		}
 	}
-	
+
 	/**
 	 * Unregisters the listener
 	 */
@@ -78,12 +71,12 @@ public abstract class StateMachine {
 		}
 	}
 
-	protected void notifyAboutTransition(Transition transition) {		
+	protected void notifyAboutTransition(Transition transition) {
 		try {
 			listenersLock.readLock().lock();
 			for (StateTransitionListener listener : transitionListeners) {
 				listener.transitionTo(state, transition);
-			}			
+			}
 		}
 		finally {
 			listenersLock.readLock().unlock();
@@ -113,7 +106,7 @@ public abstract class StateMachine {
 			notifyAboutTransition(Transition.STOP);
 		}
 		else {
-			throw new IllegalStateException("Attempt to stop from " + state);
+			throw new IllegalStateException("W.ERROR.SCAN_NOT_STARTED");
 		}
 	}
 
@@ -123,21 +116,9 @@ public abstract class StateMachine {
 	public void complete() {
 		if (state == ScanningState.STOPPING || state == ScanningState.KILLING) {
 			transitionTo(ScanningState.IDLE, Transition.COMPLETE);
-		}		
+		}
 		else {
 			throw new IllegalStateException("Attempt to complete from " + state);
-		}
-	}
-
-	/**
-	 * Transitions to the RESTARTING state in order to rescan previously scanned results.
-	 */
-	public void rescan() {
-		if (state == ScanningState.IDLE) {
-			transitionTo(ScanningState.RESTARTING, Transition.RESCAN);
-		}
-		else {
-			throw new IllegalStateException("Attempt to rescan from " + state);
 		}
 	}
 
@@ -150,18 +131,6 @@ public abstract class StateMachine {
 		}
 		else {
 			throw new IllegalStateException("Attempt to go scanning from " + state);
-		}
-	}
-
-	/**
-	 * Continues previously aborted scanning process
-	 */
-	public void continueScanning() {
-		if (state == ScanningState.IDLE) {
-			transitionTo(ScanningState.STARTING, Transition.CONTINUE);
-		}
-		else {
-			throw new IllegalStateException("Attempt to continue scanning from " + state);
 		}
 	}
 

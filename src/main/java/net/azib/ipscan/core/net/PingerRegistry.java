@@ -5,42 +5,38 @@
  */
 package net.azib.ipscan.core.net;
 
-import net.azib.ipscan.config.LoggerFactory;
-import net.azib.ipscan.config.Platform;
-import net.azib.ipscan.config.ScannerConfig;
-import net.azib.ipscan.core.ScanningSubject;
-import net.azib.ipscan.fetchers.FetcherException;
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.logging.Logger;
-
-import static java.util.logging.Level.SEVERE;
+import lombok.extern.log4j.Log4j2;
+import net.azib.ipscan.ScannerConfig;
+import net.azib.ipscan.core.ScanningSubject;
+import net.azib.ipscan.fetchers.FetcherException;
+import org.apache.commons.lang3.SystemUtils;
 
 /**
  * PingerRegistry
  *
  * @author Anton Keks
  */
+@Log4j2
 public class PingerRegistry {
-	private static final Logger LOG = LoggerFactory.getLogger();
-	
-	private ScannerConfig scannerConfig;
-	
+
+	private final ScannerConfig scannerConfig;
+
 	/** All available Pinger implementations */
 	Map<String, Class<? extends Pinger>> pingers;
 
 	@SuppressWarnings("unchecked")
 	public PingerRegistry(ScannerConfig scannerConfig) throws ClassNotFoundException {
 		this.scannerConfig = scannerConfig;
-		
+
 		pingers = new LinkedHashMap<>();
-		if (Platform.WINDOWS)
+		if (SystemUtils.IS_OS_WINDOWS)
 			pingers.put("pinger.windows", (Class<Pinger>) Class.forName(getClass().getPackage().getName() + ".WindowsPinger"));
-		if (Platform.LINUX && Platform.ARCH_64)
+		if (SystemUtils.IS_OS_LINUX && SystemUtils.OS_ARCH.contains("64"))
 			pingers.put("pinger.icmp", ICMPSharedPinger.class);
 		pingers.put("pinger.udp", UDPPinger.class);
 		pingers.put("pinger.tcp", TCPPinger.class);
@@ -48,10 +44,6 @@ public class PingerRegistry {
 		pingers.put("pinger.java", JavaPinger.class);
 	}
 
-	public String[] getRegisteredNames() {
-		return pingers.keySet().toArray(new String[pingers.size()]);
-	}
-	
 	/**
 	 * Creates the configured pinger with configured timeout
 	 */
@@ -70,9 +62,9 @@ public class PingerRegistry {
 			return constructor.newInstance(timeout);
 		}
 		catch (Exception e) {
-			Throwable t = e instanceof InvocationTargetException ? e.getCause() : e; 
+			Throwable t = e instanceof InvocationTargetException ? e.getCause() : e;
 			String message = "Unable to create pinger: " + pingerName;
-			LOG.log(SEVERE, message, t);
+			log.error(message, t);
 			if (t instanceof RuntimeException)
 				throw (RuntimeException) t;
 			throw new FetcherException("pingerCreateFailure");
@@ -80,18 +72,19 @@ public class PingerRegistry {
 	}
 
 	public boolean checkSelectedPinger() {
-		// this method must be fast, so we are not checking all the implementations		
+		// this method must be fast, so we are not checking all the implementations
 		// currently only icmp pingers may not be supported, so let's check them
 		if (scannerConfig.selectedPinger.startsWith("pinger.icmp")) {
 			try {
-				Pinger icmpPinger = createPinger(scannerConfig.selectedPinger, 250);
-				icmpPinger.ping(new ScanningSubject(InetAddress.getLocalHost()), 1);
+				try (Pinger icmpPinger = createPinger(scannerConfig.selectedPinger, 250)) {
+					icmpPinger.ping(new ScanningSubject(InetAddress.getLocalHost(), scannerConfig), 1);
+				}
 			}
 			catch (Throwable e) {
-				LOG.info("ICMP pinger failed: " + e);
+				log.info("ICMP pinger failed: " + e);
 				// win32 will use native pinger, all others get combined UDP+TCP, which doesn't require special privileges
-				scannerConfig.selectedPinger = Platform.WINDOWS ? "pinger.windows" :
-											   Platform.MAC_OS ? "pinger.java" : "pinger.combined";
+				scannerConfig.selectedPinger = SystemUtils.IS_OS_WINDOWS ? "pinger.windows" :
+					SystemUtils.IS_OS_MAC ? "pinger.java" : "pinger.combined";
 				return false;
 			}
 		}

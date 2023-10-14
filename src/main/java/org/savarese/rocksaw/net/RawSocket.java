@@ -19,12 +19,12 @@
 
 package org.savarese.rocksaw.net;
 
-import net.azib.ipscan.core.LibraryLoader;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetAddress;
 import java.net.SocketException;
+import org.homio.api.util.HardwareUtils;
 
 /**
  * <p>The RawSocket class provides a strictly utilitarian API for
@@ -42,7 +42,7 @@ import java.net.SocketException;
  *
  * <p><em>Important!  On most operating systems, you must have root
  * access or administrative privileges to use raw sockets.</em></p>
- * 
+ *
  * @author <a href="http://www.savarese.org/">Daniel F. Savarese</a>
  */
 
@@ -79,8 +79,8 @@ public class RawSocket {
 
   static {
 	// modified to load jni libs from jar file
-    LibraryLoader.loadLibrary("rocksaw");
-    
+    HardwareUtils.loadLibrary("rocksaw");
+
     if(__RockSawStartup() != 0)
       throw new UnsatisfiedLinkError(__getErrorMessage());
 
@@ -88,6 +88,14 @@ public class RawSocket {
   }
 
   private static final int __UNDEFINED = -1;
+
+  public static void closeQuietly(RawSocket socket) {
+    if (socket != null) try {
+      socket.close();
+    }
+    catch (IOException ignore) {
+    }
+  }
 
   /**
    * TimeVal is a convenience class for tracking select timeouts.
@@ -417,7 +425,7 @@ public class RawSocket {
     __stimeout.setInMilliseconds(timeout);
 
     if(!getUseSelectTimeout()) {
-      int result = 
+      int result =
         __setSendTimeout(__socket, timeout);
 
       if(result < 0)
@@ -528,7 +536,7 @@ public class RawSocket {
       result =
         __select(__socket, true, __rtimeout.seconds, __rtimeout.microseconds);
 	//System.out.println("s" + System.currentTimeMillis());
-	
+
 	// ??? setsockopt(ssock, IPPROTO_IP, IP_HDRINCL, (char *)&bOpt, sizeof(bOpt));
 
     if(result == 0)
@@ -577,7 +585,7 @@ public class RawSocket {
    * @return The number of bytes written.
    */
   public int write(InetAddress address, byte[] data, int offset, int length)
-    throws IllegalArgumentException, IOException, InterruptedIOException 
+    throws IllegalArgumentException, IOException, InterruptedIOException
   {
     if(offset < 0 || length < 0 || length > data.length - offset)
       throw new IllegalArgumentException("Invalid offset or length.");

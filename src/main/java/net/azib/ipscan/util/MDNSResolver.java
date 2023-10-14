@@ -10,7 +10,6 @@ import java.net.MulticastSocket;
 
 public class MDNSResolver implements Closeable {
 	InetAddress mdnsIP = InetAddress.getByName("224.0.0.251");
-	private int mdnsPort = 5353;
 	MulticastSocket socket = new MulticastSocket();
 
 	public MDNSResolver(int timeout) throws IOException {
@@ -63,6 +62,7 @@ public class MDNSResolver implements Closeable {
 		byte[] addr = ip.getAddress();
 		int requestId = addr[2] * 0xFF + addr[3];
 		byte[] request = dnsRequest(requestId, reverseName(addr));
+		int mdnsPort = 5353;
 		socket.send(new DatagramPacket(request, request.length, mdnsIP, mdnsPort));
 
 		DatagramPacket respPacket = new DatagramPacket(new byte[512], 512);
@@ -79,6 +79,6 @@ public class MDNSResolver implements Closeable {
 	}
 
 	public static void main(String[] args) throws IOException {
-		System.out.println(new MDNSResolver(2000).resolve(InetAddress.getByName("192.168.0.10")));
+		System.out.println(new MDNSResolver(2000).resolve(InetAddress.getByName("192.168.0.1")));
 	}
 }

@@ -4,11 +4,13 @@
  */
 package net.azib.ipscan.fetchers;
 
-import net.azib.ipscan.config.ScannerConfig;
+import net.azib.ipscan.IPScannerService;
+import net.azib.ipscan.ScannerConfig;
 import net.azib.ipscan.core.ScanningResult.ResultType;
 import net.azib.ipscan.core.ScanningSubject;
 import net.azib.ipscan.core.net.PingResult;
 import net.azib.ipscan.core.net.PingerRegistry;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * PingTTLFetcher shares pinging results with PingFetcher
@@ -17,13 +19,14 @@ import net.azib.ipscan.core.net.PingerRegistry;
  * @author Anton Keks
  */
 public class PingTTLFetcher extends PingFetcher {
-	
+
 	public PingTTLFetcher(PingerRegistry pingerRegistry, ScannerConfig scannerConfig) {
 		super(pingerRegistry, scannerConfig);
 	}
 
-	public String getId() {
-		return "fetcher.ping.ttl";
+	@Override
+	public @NotNull IPScannerService.Fetcher getFetcherID() {
+		return IPScannerService.Fetcher.PingTTL;
 	}
 
 	public Object scan(ScanningSubject subject) {

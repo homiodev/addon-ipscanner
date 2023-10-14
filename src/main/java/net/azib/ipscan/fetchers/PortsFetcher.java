@@ -5,7 +5,8 @@
  */
 package net.azib.ipscan.fetchers;
 
-import net.azib.ipscan.config.ScannerConfig;
+import net.azib.ipscan.IPScannerService;
+import net.azib.ipscan.ScannerConfig;
 import net.azib.ipscan.core.PortIterator;
 import net.azib.ipscan.core.ScanningResult.ResultType;
 import net.azib.ipscan.core.ScanningSubject;
@@ -22,6 +23,7 @@ import java.net.SocketTimeoutException;
 import java.util.Iterator;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * PortsFetcher scans TCP ports.
@@ -29,15 +31,13 @@ import java.util.TreeSet;
  *
  * @author Anton Keks
  */
-public class PortsFetcher extends AbstractFetcher {
-
-	public static final String ID = "fetcher.ports";
+public class PortsFetcher implements Fetcher {
 
 	static final String PARAMETER_OPEN_PORTS = "openPorts";
 	static final String PARAMETER_FILTERED_PORTS = "filteredPorts";
 
-	private ScannerConfig config;
-	private ThreadResourceBinder<Socket> sockets = new ThreadResourceBinder<>();
+	private final ScannerConfig config;
+	private final ThreadResourceBinder<Socket> sockets = new ThreadResourceBinder<>();
 
 	// initialize preferences for this scan
 	private PortIterator portIteratorPrototype;
@@ -47,8 +47,9 @@ public class PortsFetcher extends AbstractFetcher {
 		this.config = scannerConfig;
 	}
 
-	public String getId() {
-		return ID;
+	@Override
+	public @NotNull IPScannerService.Fetcher getFetcherID() {
+		return IPScannerService.Fetcher.Ports;
 	}
 
 	@Override
@@ -120,18 +121,10 @@ public class PortsFetcher extends AbstractFetcher {
 	}
 
 	@SuppressWarnings("unchecked")
-	protected SortedSet<Integer> getFilteredPorts(ScanningSubject subject) {
-		return (SortedSet<Integer>) subject.getParameter(PARAMETER_FILTERED_PORTS);
-	}
-
-	@SuppressWarnings("unchecked")
 	protected SortedSet<Integer> getOpenPorts(ScanningSubject subject) {
 		return (SortedSet<Integer>) subject.getParameter(PARAMETER_OPEN_PORTS);
 	}
 
-	/*
-	 * @see net.azib.ipscan.fetchers.Fetcher#scan(net.azib.ipscan.core.ScanningSubject)
-	 */
 	public Object scan(ScanningSubject subject) {
 		boolean portsScanned = scanPorts(subject);
 		if (!portsScanned)

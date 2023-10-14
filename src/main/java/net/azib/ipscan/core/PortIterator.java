@@ -15,28 +15,28 @@ import java.util.Iterator;
  * @author Anton Keks
  */
 public final class PortIterator implements Iterator<Integer>, Cloneable {
-	
+
 	private int[] portRangeStart;
 	private int[] portRangeEnd;
-	
+
 	private int rangeCountMinus1;
 	private int rangeIndex;
 	private int currentPort;
-	
+
 	private boolean hasNext;
-	
+
 	/**
 	 * Constructs the PortIterator instance
 	 * @param portString the port string to parse
 	 */
 	public PortIterator(String portString) {
-		if (portString != null && (portString = portString.trim()).length() > 0) {
+		if (portString != null && !(portString = portString.trim()).isEmpty()) {
 			String[] portRanges = portString.split("[\\s\t\n\r,;]+");
-			
+
 			// initialize storage
 			portRangeStart = new int[portRanges.length+1];	// +1 for optimization of 'next' method, prevents ArrayIndexOutOfBoundsException
 			portRangeEnd = new int[portRanges.length];
-	
+
 			// parse ints
 			for (int i = 0; i < portRanges.length; i++) {
 				String range = portRanges[i];
@@ -48,35 +48,35 @@ public final class PortIterator implements Iterator<Integer>, Cloneable {
 					throw new NumberFormatException(endPort + " port is out of range");
 				}
 			}
-			
+
 			currentPort = portRangeStart[0];
 			rangeCountMinus1 = portRanges.length - 1;
 			hasNext = rangeCountMinus1 >= 0;
 		}
 	}
-	
+
 	/**
 	 * @return true if there are more ports left
 	 */
 	public boolean hasNext() {
 		return hasNext;
 	}
-	
+
 	/**
 	 * @return next port number
 	 */
 	public Integer next() {
 		int returnPort = currentPort++;
-		
+
 		if (currentPort > portRangeEnd[rangeIndex]) {
 			hasNext = rangeIndex < rangeCountMinus1;
 			rangeIndex++;
 			currentPort = portRangeStart[rangeIndex];
 		}
-		
+
 		return returnPort;
 	}
-	
+
 	public int size() {
 		int size = 0;
 		if (portRangeStart != null) {
@@ -103,5 +103,5 @@ public final class PortIterator implements Iterator<Integer>, Cloneable {
 	public void remove() {
 		throw new UnsupportedOperationException();
 	}
-	
+
 }

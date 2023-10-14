@@ -6,7 +6,9 @@
 
 package net.azib.ipscan.fetchers;
 
-import net.azib.ipscan.config.ScannerConfig;
+import net.azib.ipscan.IPScannerService;
+import net.azib.ipscan.ScannerConfig;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * HTTPSenderFetcher - allows sending of arbitrary info port and showing the result.
@@ -17,8 +19,13 @@ public class HTTPSenderFetcher extends PortTextFetcher {
 	public HTTPSenderFetcher(ScannerConfig scannerConfig) {
 		super(scannerConfig, 80, "HEAD / HTTP/1.0\r\n\r\n", "Date: (.*)$");
 	}
-	
-	public String getId() {
+
+    @Override
+    public @NotNull IPScannerService.Fetcher getFetcherID() {
+        return IPScannerService.Fetcher.HTTPSender;
+    }
+
+    public String getId() {
 		return "fetcher.httpSender";
 	}
 }

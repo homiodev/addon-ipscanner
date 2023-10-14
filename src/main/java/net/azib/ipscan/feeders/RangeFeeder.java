@@ -5,42 +5,48 @@
  */
 package net.azib.ipscan.feeders;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import lombok.Getter;
+import net.azib.ipscan.ScannerConfig;
 import net.azib.ipscan.core.ScanningSubject;
 import net.azib.ipscan.util.InetAddressUtils;
 import org.savarese.vserv.tcpip.OctetConverter;
-
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 /**
  * IP Range Feeder.
  * It contains the starting and ending values, which
  * are then iterated sequentially.
- * 
+ *
  * @author Anton Keks
  */
-public class RangeFeeder extends AbstractFeeder {
-	
+public class RangeFeeder {
+
+	private final ScannerConfig scannerConfig;
 	private InetAddress startIP;
 	private InetAddress endIP;
 	private InetAddress originalEndIP;
 	private InetAddress currentIP;
 	boolean isReverse;
-	
-	double percentageComplete;
+
+	@Getter double percentageComplete;
 	double percentageIncrement;
-	
-	/**
-	 * @see Feeder#getId()
-	 */
+
+	public String getName() {
+		return getId(); // Labels.getLabel(getId());
+	}
+
+	@Override
+	public String toString() {
+		return getName() + ": " + getInfo();
+	}
+
 	public String getId() {
 		return "feeder.range";
 	}
-	
-	public RangeFeeder() {
-	}
-	
-	public RangeFeeder(String startIP, String endIP) {
+
+	public RangeFeeder(String startIP, String endIP, ScannerConfig scannerConfig) {
+		this.scannerConfig = scannerConfig;
 		try {
 			this.startIP = this.currentIP = InetAddress.getByName(startIP);
 			this.endIP = this.originalEndIP = InetAddress.getByName(endIP);
@@ -59,7 +65,7 @@ public class RangeFeeder extends AbstractFeeder {
 		initPercentageIncrement();
 		this.endIP = InetAddressUtils.increment(this.endIP);
 	}
-	
+
 	/**
 	 * Initalizes fields, used for computation of percentage of completion.
 	 */
@@ -74,10 +80,10 @@ public class RangeFeeder extends AbstractFeeder {
 		percentageIncrement = Math.abs(100.0 / (rawEndIP - rawStartIP + 1));
 		percentageComplete = 0;
 	}
-	
+
 	public boolean hasNext() {
 		// equals() is faster than greaterThan()
-		return !currentIP.equals(endIP); 
+		return !currentIP.equals(endIP);
 	}
 
 	public ScanningSubject next() {
@@ -88,13 +94,9 @@ public class RangeFeeder extends AbstractFeeder {
 		} else {
 			this.currentIP = InetAddressUtils.increment(prevIP);
 		}
-		return new ScanningSubject(prevIP);
+		return new ScanningSubject(prevIP, scannerConfig);
 	}
 
-	public int percentageComplete() {
-		return (int)Math.round(percentageComplete);
-	}
-	
 	public String getInfo() {
 		// let's return the range
 		return startIP.getHostAddress() + " - " + originalEndIP.getHostAddress();

@@ -19,9 +19,9 @@ import static java.lang.Math.max;
  * @author Anton Keks
  */
 public class CombinedUnprivilegedPinger implements Pinger {
-	private TCPPinger tcpPinger;
-	private UDPPinger udpPinger;
-	
+	private final TCPPinger tcpPinger;
+	private final UDPPinger udpPinger;
+
 	public CombinedUnprivilegedPinger(int timeout) {
 		udpPinger = new UDPPinger(timeout);
 		tcpPinger = new TCPPinger(timeout);

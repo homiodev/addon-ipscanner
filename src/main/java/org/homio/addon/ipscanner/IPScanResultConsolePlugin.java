@@ -1,8 +1,7 @@
-package org.homio.bundle.ipscanner;
+package org.homio.addon.ipscanner;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import lombok.Getter;
@@ -10,20 +9,20 @@ import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import net.azib.ipscan.IPScannerService;
 import net.azib.ipscan.core.ScanningResult;
-import org.homio.bundle.ipscanner.setting.ConsoleShowDeadHostsSetting;
-import org.jetbrains.annotations.NotNull;
-import org.springframework.stereotype.Component;
-import org.homio.bundle.api.EntityContext;
-import org.homio.bundle.api.console.ConsolePluginTable;
-import org.homio.bundle.api.model.HasEntityIdentifier;
-import org.homio.bundle.api.setting.console.header.ConsoleHeaderSettingPlugin;
-import org.homio.bundle.api.ui.field.UIField;
-import org.homio.bundle.ipscanner.IPScanResultConsolePlugin.IpAddressPluginModel;
-import org.homio.bundle.ipscanner.setting.IpScannerHeaderStartButtonSetting;
+import org.homio.addon.ipscanner.IPScanResultConsolePlugin.IpAddressPluginModel;
+import org.homio.addon.ipscanner.setting.ConsoleHeaderStartButtonSetting;
+import org.homio.addon.ipscanner.setting.ConsoleHeaderStopButtonSetting;
+import org.homio.addon.ipscanner.setting.ConsoleSelectedFetchersSetting;
+import org.homio.api.EntityContext;
+import org.homio.api.console.ConsolePluginTable;
+import org.homio.api.model.HasEntityIdentifier;
+import org.homio.api.setting.console.header.ConsoleHeaderSettingPlugin;
+import org.homio.api.ui.field.UIField;
 
-@Component
 @RequiredArgsConstructor
 public class IPScanResultConsolePlugin implements ConsolePluginTable<IpAddressPluginModel> {
+
+  public static final String PLUGIN_NAME = "IpScanner";
 
   @Getter
   private final EntityContext entityContext;
@@ -35,22 +34,30 @@ public class IPScanResultConsolePlugin implements ConsolePluginTable<IpAddressPl
   }
 
   @Override
+  public boolean hasRefreshIntervalSetting() {
+    return false;
+  }
+
+  @Override
   public Collection<IpAddressPluginModel> getValue() {
     List<IpAddressPluginModel> list = new ArrayList<>();
-    Boolean showDeadHosts = entityContext.setting().getValue(ConsoleShowDeadHostsSetting.class);
+    boolean showDeadHosts = ipScannerService.getScannerConfig().scanDeadHosts;
     for (IPScannerService.ResultValue resultValue : ipScannerService.getIpScannerContext().getScanningResults()) {
       if (showDeadHosts || resultValue.type != ScanningResult.ResultType.DEAD) {
         list.add(new IpAddressPluginModel(resultValue));
       }
     }
-    Collections.sort(list);
 
     return list;
   }
 
   @Override
   public Map<String, Class<? extends ConsoleHeaderSettingPlugin<?>>> getHeaderActions() {
-    return Collections.singletonMap("ipscanner.start", IpScannerHeaderStartButtonSetting.class);
+    return Map.of(
+        "start", ConsoleHeaderStartButtonSetting.class,
+        "stop", ConsoleHeaderStopButtonSetting.class,
+        "fetchers", ConsoleSelectedFetchersSetting.class
+    );
   }
 
   @Override
@@ -60,7 +67,7 @@ public class IPScanResultConsolePlugin implements ConsolePluginTable<IpAddressPl
 
   @Getter
   @NoArgsConstructor
-  public static class IpAddressPluginModel implements HasEntityIdentifier, Comparable<IpAddressPluginModel> {
+  public static class IpAddressPluginModel implements HasEntityIdentifier {
 
     @UIField(order = 1)
     private String ip;
@@ -90,11 +97,11 @@ public class IPScanResultConsolePlugin implements ConsolePluginTable<IpAddressPl
     private String macFetcherValue;
 
     @UIField(order = 15)
-    private ScanningResult.ResultType type;
+    private ScanningResult.ResultType resultType;
 
     public IpAddressPluginModel(IPScannerService.ResultValue resultValue) {
-      this.type = resultValue.type;
-      this.ip = resultValue.ipFetcherValue;
+      this.resultType = resultValue.type;
+      this.ip = resultValue.address;
       this.ping = resultValue.ping;
       this.hostname = resultValue.hostname;
       this.webDetectValue = resultValue.webDetectValue;
@@ -108,11 +115,6 @@ public class IPScanResultConsolePlugin implements ConsolePluginTable<IpAddressPl
     @Override
     public String getEntityID() {
       return ip;
-    }
-
-    @Override
-    public int compareTo(@NotNull IPScanResultConsolePlugin.IpAddressPluginModel o) {
-      return this.ip.compareTo(o.ip);
     }
   }
 }

@@ -1,9 +1,11 @@
 package net.azib.ipscan.fetchers;
 
-import net.azib.ipscan.config.ScannerConfig;
+import net.azib.ipscan.IPScannerService;
+import net.azib.ipscan.ScannerConfig;
 import net.azib.ipscan.core.ScanningSubject;
 import net.azib.ipscan.core.net.PingResult;
 import net.azib.ipscan.core.net.PingerRegistry;
+import org.jetbrains.annotations.NotNull;
 
 import static net.azib.ipscan.core.ScanningResult.ResultType.ALIVE;
 import static net.azib.ipscan.core.ScanningResult.ResultType.DEAD;
@@ -20,8 +22,9 @@ public class PacketLossFetcher extends PingFetcher {
 		super(pingerRegistry, scannerConfig);
 	}
 
-	public String getId() {
-		return "fetcher.packetloss";
+	@Override
+	public @NotNull IPScannerService.Fetcher getFetcherID() {
+		return IPScannerService.Fetcher.PacketLoss;
 	}
 
 	public Object scan(ScanningSubject subject) {

@@ -5,26 +5,23 @@
  */
 package net.azib.ipscan.core.net;
 
+import static java.lang.Thread.currentThread;
+import static net.azib.ipscan.core.net.WinIpHlp.toIp6Addr;
+import static net.azib.ipscan.core.net.WinIpHlp.toIpAddr;
+import static net.azib.ipscan.core.net.WinIpHlpDll.dll;
+
 import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
+import java.io.IOException;
+import java.util.Arrays;
 import net.azib.ipscan.core.ScanningSubject;
 import net.azib.ipscan.core.net.WinIpHlpDll.Icmp6EchoReply;
 import net.azib.ipscan.core.net.WinIpHlpDll.IcmpEchoReply;
 import net.azib.ipscan.core.net.WinIpHlpDll.Ip6SockAddrByRef;
 import net.azib.ipscan.core.net.WinIpHlpDll.IpAddrByVal;
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.util.Arrays;
-
-import static java.lang.Thread.currentThread;
-import static net.azib.ipscan.core.net.WinIpHlp.toIp6Addr;
-import static net.azib.ipscan.core.net.WinIpHlp.toIpAddr;
-import static net.azib.ipscan.core.net.WinIpHlpDll.dll;
-
 /**
  * Windows-only pinger that uses Microsoft's ICMP.DLL for its job.
- * <p/>
  * This pinger exists to provide adequate pinging to Windows users,
  * because Microsoft has removed Raw Socket support from consumer
  * versions of Windows since XP SP2.
@@ -32,8 +29,8 @@ import static net.azib.ipscan.core.net.WinIpHlpDll.dll;
  * @author Anton Keks
  */
 public class WindowsPinger implements Pinger {
-	private int timeout;
-	private Ip6SockAddrByRef anyIp6SourceAddr = new Ip6SockAddrByRef();
+	private final int timeout;
+	private final Ip6SockAddrByRef anyIp6SourceAddr = new Ip6SockAddrByRef();
 
 	public WindowsPinger(int timeout) {
 		this.timeout = timeout;
@@ -105,11 +102,5 @@ public class WindowsPinger implements Pinger {
 
 	public void close() {
 		// not needed in this pinger
-	}
-
-	public static void main(String[] args) throws IOException {
-		PingResult ping = new WindowsPinger(5000).ping(new ScanningSubject(InetAddress.getByName("::1")), 1);
-		System.out.println(ping.getAverageTime() + "ms");
-		System.out.println("TTL " + ping.getTTL());
 	}
 }

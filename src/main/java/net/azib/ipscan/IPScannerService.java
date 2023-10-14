@@ -1,15 +1,8 @@
 package net.azib.ipscan;
 
-import net.azib.ipscan.config.Platform;
-import net.azib.ipscan.config.ScannerConfig;
-import net.azib.ipscan.core.*;
-import net.azib.ipscan.core.net.PingerRegistry;
-import net.azib.ipscan.core.state.ScanningState;
-import net.azib.ipscan.core.state.StateMachine;
-import net.azib.ipscan.core.state.StateTransitionListener;
-import net.azib.ipscan.feeders.Feeder;
-import net.azib.ipscan.feeders.RangeFeeder;
-import net.azib.ipscan.fetchers.*;
+import static java.util.Arrays.asList;
+import static net.azib.ipscan.core.state.ScanningState.IDLE;
+import static org.homio.addon.ipscanner.IPScanResultConsolePlugin.PLUGIN_NAME;
 
 import java.net.InetAddress;
 import java.security.Security;
@@ -17,13 +10,38 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.prefs.Preferences;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
-
-import static java.util.Arrays.asList;
-import static net.azib.ipscan.core.state.ScanningState.IDLE;
+import lombok.Getter;
+import lombok.SneakyThrows;
+import net.azib.ipscan.core.Scanner;
+import net.azib.ipscan.core.ScannerDispatcherThread;
+import net.azib.ipscan.core.ScanningProgressCallback;
+import net.azib.ipscan.core.ScanningResult;
+import net.azib.ipscan.core.ScanningResultCallback;
+import net.azib.ipscan.core.ScanningResultList;
+import net.azib.ipscan.core.net.PingerRegistry;
+import net.azib.ipscan.core.state.ScanningState;
+import net.azib.ipscan.core.state.StateMachine;
+import net.azib.ipscan.core.state.StateTransitionListener;
+import net.azib.ipscan.feeders.RangeFeeder;
+import net.azib.ipscan.fetchers.FetcherRegistry;
+import net.azib.ipscan.fetchers.HTTPProxyFetcher;
+import net.azib.ipscan.fetchers.HTTPSenderFetcher;
+import net.azib.ipscan.fetchers.HostnameFetcher;
+import net.azib.ipscan.fetchers.MACFetcher;
+import net.azib.ipscan.fetchers.MACVendorFetcher;
+import net.azib.ipscan.fetchers.NetBIOSInfoFetcher;
+import net.azib.ipscan.fetchers.PacketLossFetcher;
+import net.azib.ipscan.fetchers.PingFetcher;
+import net.azib.ipscan.fetchers.PingTTLFetcher;
+import net.azib.ipscan.fetchers.PortsFetcher;
+import net.azib.ipscan.fetchers.UnixMACFetcher;
+import net.azib.ipscan.fetchers.WebDetectFetcher;
+import net.azib.ipscan.fetchers.WinMACFetcher;
+import org.apache.commons.lang3.SystemUtils;
+import org.homio.api.EntityContext;
+import org.homio.hquery.ProgressBar;
+import org.jetbrains.annotations.Nullable;
 
 public class IPScannerService implements ScanningProgressCallback, ScanningResultCallback, StateTransitionListener {
 
@@ -34,51 +52,56 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 
 	private final PingerRegistry pingerRegistry;
 	private final Scanner scanner;
-	private final StateMachine stateMachine;
-	private final ScannerConfig scannerConfig;
-	private final IPScannerContext ipScannerContext;
-	private final FetcherRegistry fetcherRegistry;
+	@Getter private final StateMachine stateMachine;
+	@Getter private final ScannerConfig scannerConfig;
+	@Getter private final IPScannerContext ipScannerContext;
+	private final EntityContext entityContext;
+	@Getter private final FetcherRegistry fetcherRegistry;
 
 	private ScannerDispatcherThread scannerThread;
-	private Feeder feeder;
+	private RangeFeeder feeder;
 	private Runnable completeHandler = () -> {
 	};
-	private Consumer<StateMachine.Transition> startHandler = transition -> {
+	private final Consumer<StateMachine.Transition> startHandler = transition -> {
 	};
 
-	public IPScannerService(Fetcher... fetchers) throws ClassNotFoundException {
-		Preferences preferences = Preferences.userRoot().node("ipscan");
-		this.scannerConfig = new ScannerConfig(preferences);
+	@SneakyThrows
+	public IPScannerService(EntityContext entityContext) {
+		this.entityContext = entityContext;
+		this.scannerConfig = new ScannerConfig();
 		this.pingerRegistry = new PingerRegistry(scannerConfig);
 
 		this.stateMachine = new StateMachine() {
 		};
 		this.stateMachine.addTransitionListener(this);
 
-		MACFetcher macFetcher = Platform.WINDOWS ? new WinMACFetcher() : new UnixMACFetcher();
-		this.fetcherRegistry = new FetcherRegistry(asList(
-				new IPFetcher(),
-				new PingFetcher(pingerRegistry, scannerConfig),
-				new HostnameFetcher(),
-				new WebDetectFetcher(scannerConfig),
-				new HTTPSenderFetcher(scannerConfig),
-				new PacketLossFetcher(pingerRegistry, scannerConfig),
-				new NetBIOSInfoFetcher(),
-				new PortsFetcher(scannerConfig),
-				new MACVendorFetcher(macFetcher),
-				macFetcher), preferences);
-		String[] initialFetchers = Stream.of(fetchers).map(f -> f.id).toArray(String[]::new);
-		fetcherRegistry.updateSelectedFetchers(initialFetchers);
+		this.fetcherRegistry = buildFetcherRegistry();
 		this.scanner = new Scanner(fetcherRegistry);
-		this.ipScannerContext = new IPScannerContext(fetcherRegistry, stateMachine);
+		this.ipScannerContext = new IPScannerContext(fetcherRegistry);
 		this.stateMachine.init();
 	}
 
+	private FetcherRegistry buildFetcherRegistry() {
+		MACFetcher macFetcher = SystemUtils.IS_OS_WINDOWS ? new WinMACFetcher() : new UnixMACFetcher();
+		return new FetcherRegistry(asList(
+			new PingFetcher(pingerRegistry, scannerConfig),
+			new PingTTLFetcher(pingerRegistry, scannerConfig),
+			new HostnameFetcher(),
+			new WebDetectFetcher(scannerConfig),
+			new HTTPProxyFetcher(scannerConfig),
+			new HTTPSenderFetcher(scannerConfig),
+			new PacketLossFetcher(pingerRegistry, scannerConfig),
+			new NetBIOSInfoFetcher(),
+			new PortsFetcher(scannerConfig),
+			new MACVendorFetcher(macFetcher),
+			macFetcher));
+	}
+
 	@Override
-	public void updateProgress(InetAddress currentAddress, int runningThreads, int percentageComplete) {
-		this.ipScannerContext.currentAddress = currentAddress;
-		this.ipScannerContext.runningThreads = runningThreads;
-		this.ipScannerContext.percentageComplete = percentageComplete;
+	public void updateProgress(@Nullable InetAddress currentAddress, int runningThreads, double percentageComplete) {
+		scannerConfig.progressBar.progress(percentageComplete,
+			currentAddress == null ? null : currentAddress.getHostAddress());
+		entityContext.ui().console().refreshPluginContent(PLUGIN_NAME);
 	}
 
 	@Override
@@ -97,16 +120,14 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 		this.prepareForResults(result);
 	}
 
-	private ScannerDispatcherThread createScannerThread(Feeder feeder, ScanningProgressCallback progressCallback, ScanningResultCallback resultsCallback) {
+	private ScannerDispatcherThread createScannerThread(RangeFeeder feeder, ScanningProgressCallback progressCallback, ScanningResultCallback resultsCallback) {
 		return new ScannerDispatcherThread(feeder, scanner, stateMachine, progressCallback, this.ipScannerContext.scanningResults, scannerConfig, resultsCallback);
 	}
 
-	public void updateFetchers(List<Fetcher> fetchers) {
-		this.fetcherRegistry.updateSelectedFetchers(fetchers.stream().map(f -> f.id).toArray(String[]::new));
-	}
-
-	public void startScan(String startIP, String endIP) {
-		this.feeder = new RangeFeeder(startIP, endIP);
+	public void startScan(String startIP, String endIP, String ports, ProgressBar progressBar) {
+		scannerConfig.portString = ports;
+		scannerConfig.progressBar = progressBar;
+		feeder = new RangeFeeder(startIP, endIP, scannerConfig);
 		if (stateMachine.inState(IDLE)) {
 			if (!this.pingerRegistry.checkSelectedPinger())
 				throw new IllegalStateException("Unable to start ip scanner");
@@ -151,52 +172,27 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 		this.completeHandler = completeHandler;
 	}
 
-	public void setStartHandler(Consumer<StateMachine.Transition> startHandler) {
-		this.startHandler = startHandler;
-	}
-
-	public StateMachine getStateMachine() {
-		return stateMachine;
-	}
-
-	public final class IPScannerContext {
-		public int runningThreads;
-		public InetAddress currentAddress;
-		public int percentageComplete;
+	public static final class IPScannerContext {
 		public StateMachine.Transition state;
 		public final ScanningResultList scanningResults;
 
-		public IPScannerContext(FetcherRegistry fetcherRegistry, StateMachine stateMachine) {
-			this.scanningResults = new ScanningResultList(fetcherRegistry, stateMachine);
+		public IPScannerContext(FetcherRegistry fetcherRegistry) {
+			this.scanningResults = new ScanningResultList(fetcherRegistry);
 		}
 
 		public void clear() {
 			scanningResults.clear();
-			runningThreads = 0;
-			currentAddress = null;
-			percentageComplete = 0;
 		}
 
 		public List<ResultValue> getScanningResults() {
 			if (scanningResults.getFetchers() != null) {
-				List<Integer> indexes = new ArrayList<>(Fetcher.values().length);
-				for (Fetcher fetcher : Fetcher.values()) {
-					indexes.add(scanningResults.getFetcherIndex(fetcher.id));
-				}
 
-				return StreamSupport.stream(scanningResults.spliterator(), false)
-						.map(sr -> new ResultValue(sr, indexes)).collect(Collectors.toList());
+				List<ScanningResult> snap = new ArrayList<>(scanningResults.getResultList());
+				List<Integer> indexes = Stream.of(Fetcher.values()).map(scanningResults::getFetcherIndex).toList();
+				return snap.stream().map(s -> new ResultValue(s, indexes)).toList();
 			}
 			return Collections.emptyList();
 		}
-	}
-
-	public ScannerConfig getScannerConfig() {
-		return scannerConfig;
-	}
-
-	public IPScannerContext getIpScannerContext() {
-		return ipScannerContext;
 	}
 
 	public static class ResultValue {
@@ -208,45 +204,42 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 		public final String netBIOSInfo;
 		public final String ports;
 		public final String macVendorValue;
-		public final String ipFetcherValue;
 		public final String macFetcherValue;
 		public final ScanningResult.ResultType type;
 
 		public ResultValue(ScanningResult scanningResult, List<Integer> indexes) {
-			this.address = scanningResult.getAddress().toString();
+			this.address = scanningResult.getAddress().getHostAddress();
 			this.type = scanningResult.getType();
-			this.ipFetcherValue = nullSafeValue(scanningResult, indexes.get(Fetcher.IPFetcher.ordinal()));
-			this.ping = nullSafeValue(scanningResult, indexes.get(Fetcher.PingFetcher.ordinal()));
-			this.hostname = nullSafeValue(scanningResult, indexes.get(Fetcher.HostnameFetcher.ordinal()));
-			this.webDetectValue = nullSafeValue(scanningResult, indexes.get(Fetcher.WebDetectFetcher.ordinal()));
-			this.httpSenderValue = nullSafeValue(scanningResult, indexes.get(Fetcher.HTTPSenderFetcher.ordinal()));
-			this.netBIOSInfo = nullSafeValue(scanningResult, indexes.get(Fetcher.NetBIOSInfoFetcher.ordinal()));
-			this.ports = nullSafeValue(scanningResult, indexes.get(Fetcher.PortsFetcher.ordinal()));
-			this.macVendorValue = nullSafeValue(scanningResult, indexes.get(Fetcher.MACVendorFetcher.ordinal()));
-			this.macFetcherValue = nullSafeValue(scanningResult, indexes.get(Fetcher.MACFetcher.ordinal()));
+			this.ping = nullSafeValue(scanningResult, indexes.get(Fetcher.Ping.ordinal()));
+			this.hostname = nullSafeValue(scanningResult, indexes.get(Fetcher.Hostname.ordinal()));
+			this.webDetectValue = nullSafeValue(scanningResult, indexes.get(Fetcher.WebDetect.ordinal()));
+			this.httpSenderValue = nullSafeValue(scanningResult, indexes.get(Fetcher.HTTPSender.ordinal()));
+			this.netBIOSInfo = nullSafeValue(scanningResult, indexes.get(Fetcher.NetBIOSInfo.ordinal()));
+			this.ports = nullSafeValue(scanningResult, indexes.get(Fetcher.Ports.ordinal()));
+			this.macVendorValue = nullSafeValue(scanningResult, indexes.get(Fetcher.MACVendor.ordinal()));
+			this.macFetcherValue = nullSafeValue(scanningResult, indexes.get(Fetcher.MAC.ordinal()));
 		}
 
 		private String nullSafeValue(ScanningResult scanningResult, int index) {
-			Object ret = scanningResult.getValues().get(index);
-			return ret == null ? null : ret.toString();
+			if (index >= 0) {
+				Object ret = scanningResult.getValues().get(index);
+				return ret == null ? null : ret.toString();
+			}
+			return null;
 		}
 	}
 
 	public enum Fetcher {
-		IPFetcher(net.azib.ipscan.fetchers.IPFetcher.ID),
-		PingFetcher(net.azib.ipscan.fetchers.PingFetcher.ID),
-		HostnameFetcher(net.azib.ipscan.fetchers.HostnameFetcher.ID),
-		WebDetectFetcher("fetcher.webDetect"),
-		HTTPSenderFetcher("fetcher.httpSender"),
-		NetBIOSInfoFetcher("fetcher.netbios"),
-		PortsFetcher(net.azib.ipscan.fetchers.PortsFetcher.ID),
-		MACVendorFetcher(net.azib.ipscan.fetchers.MACVendorFetcher.ID),
-		MACFetcher(net.azib.ipscan.fetchers.MACFetcher.ID);
-
-		private final String id;
-
-		Fetcher(String id) {
-			this.id = id;
-		}
+		Ping,
+		Hostname,
+		WebDetect,
+		HTTPSender,
+		NetBIOSInfo,
+		PacketLoss,
+		Ports,
+		MACVendor,
+		MAC,
+		PingTTL,
+		HttpProxy
 	}
 }

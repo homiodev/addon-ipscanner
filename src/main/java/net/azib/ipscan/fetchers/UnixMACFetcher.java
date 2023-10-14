@@ -1,19 +1,19 @@
 package net.azib.ipscan.fetchers;
 
-import net.azib.ipscan.config.Platform;
-import net.azib.ipscan.util.IOUtils;
+import static org.apache.commons.io.IOUtils.closeQuietly;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Enumeration;
+import org.apache.commons.lang3.SystemUtils;
 
 public class UnixMACFetcher extends MACFetcher {
-	private String arp;
+	private final String arp;
 
 	public UnixMACFetcher() {
-		if (Platform.LINUX)
+		if (SystemUtils.IS_OS_LINUX)
 			arp = "arp -an "; // use BSD-style output
 		else
 			arp = "arp -n ";  // Mac and other BSD
@@ -51,7 +51,7 @@ public class UnixMACFetcher extends MACFetcher {
 			return null;
 		}
 		finally {
-			IOUtils.closeQuietly(reader);
+			closeQuietly(reader);
 		}
 	}
 }

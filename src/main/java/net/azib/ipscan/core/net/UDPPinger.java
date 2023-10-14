@@ -5,32 +5,32 @@
  */
 package net.azib.ipscan.core.net;
 
-import net.azib.ipscan.config.LoggerFactory;
-import net.azib.ipscan.core.ScanningSubject;
+import static org.apache.commons.io.IOUtils.closeQuietly;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.NoRouteToHostException;
+import java.net.PortUnreachableException;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
-import java.util.logging.Logger;
-
-import static java.util.logging.Level.FINER;
-import static net.azib.ipscan.util.IOUtils.closeQuietly;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import net.azib.ipscan.core.ScanningSubject;
 
 /**
- * UDP Pinger. Uses an UDP port to ping, doesn't require root privileges.
+ * UDP Pinger. Uses a UDP port to ping, doesn't require root privileges.
  *
  * @author Anton Keks
  */
+@Log4j2
+@RequiredArgsConstructor
 public class UDPPinger implements Pinger {
-	private static final Logger LOG = LoggerFactory.getLogger();
 
 	private static final int PROBE_UDP_PORT = 37381;
 
-	private int timeout;
-
-	public UDPPinger(int timeout) {
-		this.timeout = timeout;
-	}
+	private final int timeout;
 
 	public PingResult ping(ScanningSubject subject, int count) throws IOException {
 		PingResult result = new PingResult(subject.getAddress(), count);
@@ -68,7 +68,7 @@ public class UDPPinger implements Pinger {
 				catch (IOException e) {
 					if (e.getMessage().startsWith("Network is unreachable"))
 						break;
-					LOG.log(FINER, subject.toString(), e);
+					log.debug(subject.toString(), e);
 				}
 			}
 			return result;

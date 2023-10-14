@@ -3,26 +3,26 @@ package net.azib.ipscan.fetchers;
 import java.net.InetAddress;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import net.azib.ipscan.IPScannerService;
 import net.azib.ipscan.core.ScanningSubject;
+import org.jetbrains.annotations.NotNull;
 
-public abstract class MACFetcher extends AbstractFetcher {
+public abstract class MACFetcher implements Fetcher {
 
-    public static final String ID = "fetcher.mac";
     static final Pattern macAddressPattern = Pattern.compile("([a-fA-F0-9]{1,2}[-:]){5}[a-fA-F0-9]{1,2}");
     static final Pattern leadingZeroesPattern = Pattern.compile("(?<=^|-|:)([A-F0-9])(?=-|:|$)");
-    String separator = getPreferences().get("separator", ":");
 
     @Override
-    public String getId() {
-        return ID;
+    public @NotNull IPScannerService.Fetcher getFetcherID() {
+        return IPScannerService.Fetcher.MAC;
     }
 
     @Override
     public final String scan(ScanningSubject subject) {
-        String mac = (String) subject.getParameter(ID);
+        String mac = (String) subject.getParameter(IPScannerService.Fetcher.MAC.name());
 			if (mac == null) {mac = resolveMAC(subject.getAddress());}
-        subject.setParameter(ID, mac);
-        return replaceSeparator(mac);
+        subject.setParameter(IPScannerService.Fetcher.MAC.name(), mac);
+        return mac;
     }
 
     protected abstract String resolveMAC(InetAddress address);
@@ -30,7 +30,7 @@ public abstract class MACFetcher extends AbstractFetcher {
     String bytesToMAC(byte[] bytes) {
         StringBuilder mac = new StringBuilder();
 			for (byte b : bytes) {mac.append(String.format("%02X", b)).append(":");}
-			if (mac.length() > 0) {mac.deleteCharAt(mac.length() - 1);}
+			if (!mac.isEmpty()) {mac.deleteCharAt(mac.length() - 1);}
         return mac.toString();
     }
 
@@ -39,19 +39,7 @@ public abstract class MACFetcher extends AbstractFetcher {
         return m.find() ? addLeadingZeroes(m.group().toUpperCase()) : null;
     }
 
-    String replaceSeparator(String mac) {
-        return mac != null ? mac.replace(":", separator) : null;
-    }
-
     private static String addLeadingZeroes(String mac) {
         return leadingZeroesPattern.matcher(mac).replaceAll("0$1");
-    }
-
-    public String getSeparator() {
-        return separator;
-    }
-
-    public void setSeparator(String separator) {
-        this.separator = separator;
     }
 }

@@ -5,36 +5,31 @@
  */
 package net.azib.ipscan.core.net;
 
-import net.azib.ipscan.config.LoggerFactory;
-import net.azib.ipscan.core.ScanningSubject;
+import static java.lang.Math.min;
+import static org.apache.commons.io.IOUtils.closeQuietly;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.NoRouteToHostException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
-import java.util.logging.Logger;
-
-import static java.lang.Math.min;
-import static java.util.logging.Level.INFO;
-import static net.azib.ipscan.util.IOUtils.closeQuietly;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import net.azib.ipscan.core.ScanningSubject;
 
 /**
  * TCP Pinger. Uses a TCP port to ping, doesn't require root privileges.
  *
  * @author Anton Keks
  */
+@Log4j2
+@RequiredArgsConstructor
 public class TCPPinger implements Pinger {
-	private static final Logger LOG = LoggerFactory.getLogger();
 
 	// try different ports in sequence, starting with 80 (which is most probably not filtered)
 	private static final int[] PROBE_TCP_PORTS = {80, 7, 443, 139, 22};
 
-	private int timeout;
-
-	public TCPPinger(int timeout) {
-		this.timeout = timeout;
-	}
+	private final int timeout;
 
 	public PingResult ping(ScanningSubject subject, int count) {
 		PingResult result = new PingResult(subject.getAddress(), count);
@@ -80,7 +75,7 @@ public class TCPPinger implements Pinger {
 				}
 				else {
 					// something unknown
-					LOG.log(INFO, subject.toString(), e);
+					log.info(subject.toString(), e);
 				}
 			}
 			finally {
@@ -93,7 +88,7 @@ public class TCPPinger implements Pinger {
 
 	private void success(PingResult result, long startTime) {
 		result.addReply(System.currentTimeMillis() - startTime);
-		// one positive result is enough for TCP 
+		// one positive result is enough for TCP
 		result.enableTimeoutAdaptation();
 	}
 

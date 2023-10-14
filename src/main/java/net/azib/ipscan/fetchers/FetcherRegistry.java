@@ -5,13 +5,13 @@
  */
 package net.azib.ipscan.fetchers;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.prefs.Preferences;
+import java.util.Set;
+import java.util.stream.Collectors;
+import net.azib.ipscan.IPScannerService;
 
 /**
  * Fetcher registry singleton class.
@@ -20,123 +20,25 @@ import java.util.prefs.Preferences;
  * @author Anton Keks
  */
 public class FetcherRegistry {
-	static final String PREFERENCE_SELECTED_FETCHERS = "selectedFetchers";
 
-	private final Preferences preferences;
 	/** All available Fetcher implementations, List of Fetcher instances */
-	private Map<String, Fetcher> registeredFetchers;
+	private final Map<IPScannerService.Fetcher, Fetcher> registeredFetchers;
 
 	/** Selected for scanning Fetcher implementations, keys are fetcher labels, values are Fetcher instances */
-	private Map<String, Fetcher> selectedFetchers;
+	private Map<IPScannerService.Fetcher, Fetcher> selectedFetchers;
 
-	/** A collection of update listeners - observers of FetcherRegistry */
-	private List<FetcherRegistryUpdateListener> updateListeners = new ArrayList<>();
-
-	public FetcherRegistry(List<Fetcher> fetchers, Preferences preferences) {
-		this.preferences = preferences;
-
-		registeredFetchers = createFetchersMap(fetchers);
-
-		// now load the preferences to init selected fetchers
-		loadSelectedFetchers(preferences);
+	public FetcherRegistry(List<Fetcher> fetchers) {
+		registeredFetchers = fetchers.stream().collect(Collectors.toMap(Fetcher::getFetcherID, s -> s));
 	}
 
-	private Map<String, Fetcher> createFetchersMap(List<Fetcher> fetchers) {
-		Map<String, Fetcher> registeredFetchers = new LinkedHashMap<>(fetchers.size());
-		for (Fetcher fetcher : fetchers) {
-			registeredFetchers.put(fetcher.getId(), fetcher);
-		}
-		return Collections.unmodifiableMap(registeredFetchers);
-	}
-
-	private void loadSelectedFetchers(Preferences preferences) {
-		String fetcherPrefValue = preferences.get(PREFERENCE_SELECTED_FETCHERS, null);
-		if (fetcherPrefValue == null) {
-			// no preferences previously saved, use these default values
-			selectedFetchers = new LinkedHashMap<>();
-			selectedFetchers.put(IPFetcher.ID, registeredFetchers.get(IPFetcher.ID));
-			selectedFetchers.put(PingFetcher.ID, registeredFetchers.get(PingFetcher.ID));
-			selectedFetchers.put(HostnameFetcher.ID, registeredFetchers.get(HostnameFetcher.ID));
-			selectedFetchers.put(PortsFetcher.ID, registeredFetchers.get(PortsFetcher.ID));
-		}
-		else {
-			String[] fetcherPrefs = fetcherPrefValue.split("###");
-			selectedFetchers = new LinkedHashMap<>(registeredFetchers.size());
-			// initialize saved selected fetchers
-			for (String fetcherPref : fetcherPrefs) {
-				Fetcher fetcher = registeredFetchers.get(fetcherPref);
-				// make sure that this fetcher is registered
-				if (fetcher != null) {
-					selectedFetchers.put(fetcherPref, fetcher);
-				}
-			}
+	public void setFetchers(Set<IPScannerService.Fetcher> fetchers) {
+		selectedFetchers = new LinkedHashMap<>();
+		for (IPScannerService.Fetcher fetcher : fetchers) {
+			selectedFetchers.put(fetcher, registeredFetchers.get(fetcher));
 		}
 	}
 
-	private void saveSelectedFetchers(Preferences preferences) {
-		StringBuilder sb = new StringBuilder();
-		for (String fetcherName : selectedFetchers.keySet()) {
-			sb.append(fetcherName).append("###");
-		}
-		String value = sb.toString();
-		if (value.endsWith("###"))
-			value = value.substring(0, value.length() - 3);
-
-		preferences.put(PREFERENCE_SELECTED_FETCHERS, value);
-	}
-
-  /**
-   * Adds a listener to observe FetcherRegistry events, like modification of selected fetchers.
-   */
-	public void addListener(FetcherRegistryUpdateListener listener) {
-		updateListeners.add(listener);
-	}
-
-  /**
-   * @return a List of all registered Fetchers
-   */
-	public Collection<Fetcher> getRegisteredFetchers() {
-		return registeredFetchers.values();
-	}
-
-  /**
-   * @return a List of selected Fetchers only
-   */
 	public Collection<Fetcher> getSelectedFetchers() {
 		return selectedFetchers.values();
-	}
-
-  /**
-   * Searches for selected fetcher with the given label
-   * @return the index, if found, or -1
-   */
-	public int getSelectedFetcherIndex(String id) {
-		int index = 0;
-		for (Fetcher fetcher : selectedFetchers.values()) {
-			if (id.equals(fetcher.getId())) return index;
-			index++;
-		}
-		return -1;
-	}
-
-  /**
-   * Updates the list, retaining only items that are passed in the array.
-   * The order of elements will be the same as in the array.
-   */
-	public void updateSelectedFetchers(String[] labels) {
-		// rebuild the map (to recreate the new order of elements)
-		Map<String, Fetcher> newList = new LinkedHashMap<>();
-		for (String label : labels) {
-			newList.put(label, registeredFetchers.get(label));
-		}
-		selectedFetchers = newList;
-
-		// inform observers
-		for (FetcherRegistryUpdateListener listener : updateListeners) {
-			listener.handleUpdateOfSelectedFetchers(this);
-		}
-
-		// save preferences
-		saveSelectedFetchers(preferences);
 	}
 }

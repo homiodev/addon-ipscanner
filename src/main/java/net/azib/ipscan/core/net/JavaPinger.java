@@ -1,16 +1,14 @@
 package net.azib.ipscan.core.net;
 
+import lombok.RequiredArgsConstructor;
 import net.azib.ipscan.core.ScanningSubject;
 
 import java.io.IOException;
 import java.net.ConnectException;
 
+@RequiredArgsConstructor
 public class JavaPinger implements Pinger {
-	private int timeout;
-
-	public JavaPinger(int timeout) {
-		this.timeout = timeout;
-	}
+	private final int timeout;
 
 	@Override
 	public PingResult ping(ScanningSubject subject, int count) throws IOException {

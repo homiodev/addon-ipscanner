@@ -5,30 +5,26 @@
  */
 package net.azib.ipscan.core;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import net.azib.ipscan.core.values.NotAvailable;
 import net.azib.ipscan.core.values.NotScanned;
 import net.azib.ipscan.fetchers.Fetcher;
 import net.azib.ipscan.fetchers.FetcherRegistry;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 /**
  * Scanner functionality is encapsulated in this class.
  * It uses a list of fetchers to perform the actual scanning.
- * 
+ *
  * @author Anton Keks
  */
+@Log4j2
+@RequiredArgsConstructor
 public class Scanner {
-	private static final Logger LOG = Logger.getLogger(Scanner.class.getName());
-	private FetcherRegistry fetcherRegistry;
-	private Map<Long, Fetcher> activeFetchers = new ConcurrentHashMap<>();
-
-	public Scanner(FetcherRegistry fetcherRegistry) {
-		this.fetcherRegistry = fetcherRegistry;
-	}
+	private final FetcherRegistry fetcherRegistry;
+	private final Map<Long, Fetcher> activeFetchers = new ConcurrentHashMap<>();
 
 	/**
 	 * Executes all registered fetchers for the current IP address.
@@ -53,14 +49,14 @@ public class Scanner {
 				}
 			}
 			catch (Throwable e) {
-				LOG.log(Level.SEVERE, "", e);
+				log.error(e);
 			}
 			// store the value
 			result.setValue(fetcherIndex, value);
 			fetcherIndex++;
 		}
 		activeFetchers.remove(Thread.currentThread().getId());
-		
+
 		result.setType(subject.getResultType());
 	}
 
@@ -68,7 +64,7 @@ public class Scanner {
 		Fetcher fetcher = activeFetchers.get(thread.getId());
 		if (fetcher != null) fetcher.cleanup();
 	}
-	
+
 	/**
 	 * Init everything needed for scanning, including Fetchers
 	 */
@@ -77,7 +73,7 @@ public class Scanner {
 			fetcher.init();
 		}
 	}
-	
+
 	/**
 	 * Cleanup after a scan
 	 */

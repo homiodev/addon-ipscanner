@@ -5,49 +5,51 @@
  */
 package net.azib.ipscan.fetchers;
 
-import net.azib.ipscan.config.LoggerFactory;
-import net.azib.ipscan.config.ScannerConfig;
-import net.azib.ipscan.core.ScanningResult.ResultType;
-import net.azib.ipscan.core.ScanningSubject;
+import static java.lang.Thread.currentThread;
+import static java.util.Collections.singleton;
+import static net.azib.ipscan.fetchers.PortsFetcher.PARAMETER_OPEN_PORTS;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.*;
+import java.net.ConnectException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.Iterator;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static java.lang.Thread.currentThread;
-import static java.util.Collections.singleton;
-import static net.azib.ipscan.fetchers.PortsFetcher.PARAMETER_OPEN_PORTS;
+import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
+import net.azib.ipscan.ScannerConfig;
+import net.azib.ipscan.core.ScanningResult.ResultType;
+import net.azib.ipscan.core.ScanningSubject;
 
 /**
  * PortTextFetcher - generic configurable fetcher to read some particular information from a port.
  *
  * @author Anton Keks
  */
-public abstract class PortTextFetcher extends AbstractFetcher {
-	private static final Logger LOG = LoggerFactory.getLogger();
+@Log4j2
+public abstract class PortTextFetcher implements Fetcher {
 
-	private ScannerConfig scannerConfig;
+	private final ScannerConfig scannerConfig;
 
-	private int defaultPort;
+	private final int defaultPort;
 	protected boolean scanOpenPorts;
-	protected String textToSend;
-	protected Pattern matchingRegexp;
-	protected int extractGroup;
+	@Getter protected String textToSend;
+	@Getter protected Pattern matchingRegexp;
+	@Getter protected int extractGroup;
 
 	public PortTextFetcher(ScannerConfig scannerConfig, int defaultPort, String defaultTextToSend, String matchingRegexp) {
 		this.scannerConfig = scannerConfig;
 		this.defaultPort = defaultPort;
-		this.textToSend = getPreferences().get("textToSend", defaultTextToSend);
-		this.matchingRegexp = Pattern.compile(getPreferences().get("matchingRegexp", matchingRegexp));
-		this.extractGroup = getPreferences().getInt("extractGroup", 1);
+		this.textToSend = defaultTextToSend;
+		this.matchingRegexp = Pattern.compile(matchingRegexp);
+		this.extractGroup = 1;
 	}
 
 	public Object scan(ScanningSubject subject) {
@@ -84,13 +86,13 @@ public abstract class PortTextFetcher extends AbstractFetcher {
 				// connection reset
 			}
 			catch (IOException e) {
-				LOG.log(Level.FINE, subject.getAddress().toString(), e);
+				log.debug(subject.getAddress().toString(), e);
 			}
 		}
 		return null;
 	}
 
-	protected String getResult(Matcher matcher, int port) {
+    protected String getResult(Matcher matcher, int port) {
 		String result = matcher.group(extractGroup);
 		return result.isEmpty() ? String.valueOf(port) : result;
 	}
@@ -106,29 +108,5 @@ public abstract class PortTextFetcher extends AbstractFetcher {
 			}
 		}
 		return subject.isAnyPortRequested() ? subject.requestedPortsIterator() : singleton(defaultPort).iterator();
-	}
-
-	public String getTextToSend() {
-		return textToSend;
-	}
-
-	public void setTextToSend(String textToSend) {
-		this.textToSend = textToSend;
-	}
-
-	public Pattern getMatchingRegexp() {
-		return matchingRegexp;
-	}
-
-	public void setMatchingRegexp(Pattern matchingRegexp) {
-		this.matchingRegexp = matchingRegexp;
-	}
-
-	public int getExtractGroup() {
-		return extractGroup;
-	}
-
-	public void setExtractGroup(int extractGroup) {
-		this.extractGroup = extractGroup;
 	}
 }

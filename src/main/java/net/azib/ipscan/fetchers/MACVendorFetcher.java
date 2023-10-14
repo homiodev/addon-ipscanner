@@ -1,5 +1,6 @@
 package net.azib.ipscan.fetchers;
 
+import net.azib.ipscan.IPScannerService;
 import net.azib.ipscan.core.ScanningSubject;
 
 import java.io.BufferedReader;
@@ -7,19 +8,19 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
+import org.jetbrains.annotations.NotNull;
 
-public class MACVendorFetcher extends AbstractFetcher {
-	public static final String ID = "fetcher.mac.vendor";
-	private static Map<String, String> vendors = new HashMap<>();
-	private MACFetcher macFetcher;
+public class MACVendorFetcher implements Fetcher {
+	private static final Map<String, String> vendors = new HashMap<>();
+	private final MACFetcher macFetcher;
 
 	public MACVendorFetcher(MACFetcher macFetcher) {
 		this.macFetcher = macFetcher;
 	}
 
 	@Override
-	public String getId() {
-		return ID;
+	public @NotNull IPScannerService.Fetcher getFetcherID() {
+		return IPScannerService.Fetcher.MACVendor;
 	}
 
 	@Override
@@ -38,10 +39,10 @@ public class MACVendorFetcher extends AbstractFetcher {
 
 	@Override
 	public Object scan(ScanningSubject subject) {
-		String mac = (String)subject.getParameter(MACFetcher.ID);
+		String mac = (String)subject.getParameter(IPScannerService.Fetcher.MAC.name());
 		if (mac == null) {
 			macFetcher.scan(subject);
-			mac = (String) subject.getParameter(MACFetcher.ID);
+			mac = (String) subject.getParameter(IPScannerService.Fetcher.MAC.name());
 		}
 		return mac != null ? findMACVendor(mac) : null;
 	}

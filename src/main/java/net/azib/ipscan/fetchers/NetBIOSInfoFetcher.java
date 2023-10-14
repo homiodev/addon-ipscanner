@@ -6,15 +6,13 @@
 
 package net.azib.ipscan.fetchers;
 
-import net.azib.ipscan.config.LoggerFactory;
-import net.azib.ipscan.core.ScanningSubject;
-import net.azib.ipscan.util.NetBIOSResolver;
-
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.util.logging.Logger;
-
-import static java.util.logging.Level.WARNING;
+import lombok.extern.log4j.Log4j2;
+import net.azib.ipscan.IPScannerService;
+import net.azib.ipscan.core.ScanningSubject;
+import net.azib.ipscan.util.NetBIOSResolver;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * NetBIOSInfoFetcher - gathers NetBIOS info about Windows machines.
@@ -22,14 +20,14 @@ import static java.util.logging.Level.WARNING;
  *
  * @author Anton Keks
  */
-public class NetBIOSInfoFetcher extends AbstractFetcher {
+@Log4j2
+public class NetBIOSInfoFetcher implements Fetcher {
 	public NetBIOSInfoFetcher() {}
 
-	private static final Logger LOG = LoggerFactory.getLogger();
-
-	public String getId() {
-		return "fetcher.netbios";
-	}
+    @Override
+    public @NotNull IPScannerService.Fetcher getFetcherID() {
+        return IPScannerService.Fetcher.NetBIOSInfo;
+    }
 
 	public Object scan(ScanningSubject subject) {
 		try (NetBIOSResolver netbios = new NetBIOSResolver(subject.getAdaptedPortTimeout())) {
@@ -55,7 +53,7 @@ public class NetBIOSInfoFetcher extends AbstractFetcher {
 		}
 		catch (Exception e) {
 			// bugs?
-			LOG.log(WARNING, null, e);
+			log.warn(e);
 			return null;
 		}
 	}

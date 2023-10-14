@@ -8,10 +8,6 @@ package net.azib.ipscan.fetchers;
 import net.azib.ipscan.core.UserErrorException;
 
 public class FetcherException extends UserErrorException {
-	public FetcherException(String label, Throwable cause) {
-		super(label, cause);
-	}
-
 	public FetcherException(String label) {
 		super(label);
 	}

@@ -4,11 +4,6 @@
  */
 package net.azib.ipscan.fetchers;
 
-import net.azib.ipscan.config.LoggerFactory;
-import net.azib.ipscan.core.ScanningSubject;
-import net.azib.ipscan.util.MDNSResolver;
-import net.azib.ipscan.util.NetBIOSResolver;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -16,17 +11,20 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
-import java.util.logging.Logger;
-
-import static java.util.logging.Level.WARNING;
+import lombok.extern.log4j.Log4j2;
+import net.azib.ipscan.IPScannerService;
+import net.azib.ipscan.core.ScanningSubject;
+import net.azib.ipscan.util.MDNSResolver;
+import net.azib.ipscan.util.NetBIOSResolver;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * HostnameFetcher retrieves hostnames of IP addresses by reverse DNS lookups.
- * 
+ *
  * @author Anton Keks
  */
-public class HostnameFetcher extends AbstractFetcher {
-	private static final Logger LOG = LoggerFactory.getLogger();
+@Log4j2
+public class HostnameFetcher implements Fetcher {
 
 	private static Object inetAddressImpl;
 	private static Method getHostByAddr;
@@ -40,17 +38,16 @@ public class HostnameFetcher extends AbstractFetcher {
 			getHostByAddr.setAccessible(true);
 		}
 		catch (Exception e) {
-			LOG.log(WARNING, "Could not get InetAddressImpl", e);
+			log.warn("Could not get InetAddressImpl", e);
 		}
 	}
 
-	public static final String ID = "fetcher.hostname";
-
 	public HostnameFetcher() {}
 
-	public String getId() {
-		return ID;
-	}
+    @Override
+    public @NotNull IPScannerService.Fetcher getFetcherID() {
+        return IPScannerService.Fetcher.Hostname;
+    }
 
 	@SuppressWarnings("PrimitiveArrayArgumentToVariableArgMethod")
 	private String resolveWithRegularDNS(InetAddress ip) {
@@ -79,7 +76,7 @@ public class HostnameFetcher extends AbstractFetcher {
 			return null;
 		}
 		catch (Exception e) {
-			LOG.log(WARNING, "Failed to query mDNS for " + subject, e);
+			log.warn("Failed to query mDNS for " + subject, e);
 			return null;
 		}
 	}
@@ -95,7 +92,7 @@ public class HostnameFetcher extends AbstractFetcher {
 			return null;
 		}
 		catch (Exception e) {
-			LOG.log(WARNING, "Failed to query NetBIOS for " + subject, e);
+			log.warn("Failed to query NetBIOS for " + subject, e);
 			return null;
 		}
 	}

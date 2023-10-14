@@ -6,6 +6,7 @@
 package net.azib.ipscan.core.net;
 
 import java.net.InetAddress;
+import lombok.Getter;
 
 /**
  * The result of pinging
@@ -18,10 +19,10 @@ public class PingResult {
 	private int ttl;
 	private long totalTime;
 	private long longestTime;
-	private int packetCount;
-	private int replyCount;
-	private boolean timeoutAdaptationAllowed;
-	
+	@Getter private int packetCount;
+	@Getter private int replyCount;
+	@Getter private boolean timeoutAdaptationAllowed;
+
 	public PingResult(InetAddress address, int packetCount) {
 		this.address = address;
 		this.packetCount = packetCount;
@@ -39,15 +40,15 @@ public class PingResult {
 	public int getTTL() {
 		return ttl;
 	}
-	
+
 	public void setTTL(int ttl) {
 		this.ttl = ttl;
 	}
-	
+
 	public int getAverageTime() {
 		return (int)(totalTime / replyCount);
 	}
-	
+
 	public int getLongestTime() {
 		return (int)longestTime;
 	}
@@ -63,14 +64,6 @@ public class PingResult {
 			return 100;
 	}
 
-	public int getPacketCount() {
-		return packetCount;
-	}
-
-	public int getReplyCount() {
-		return replyCount;
-	}
-	
 	/**
 	 * @return true in case at least one reply was received
 	 */
@@ -81,10 +74,6 @@ public class PingResult {
 	public void enableTimeoutAdaptation() {
 		if (isAlive())
 			timeoutAdaptationAllowed = true;
-	}
-	
-	public boolean isTimeoutAdaptationAllowed() {
-		return timeoutAdaptationAllowed;
 	}
 
 	PingResult merge(PingResult result) {

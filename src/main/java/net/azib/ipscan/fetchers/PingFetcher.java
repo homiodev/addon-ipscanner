@@ -4,21 +4,21 @@
  */
 package net.azib.ipscan.fetchers;
 
-import net.azib.ipscan.config.LoggerFactory;
-import net.azib.ipscan.config.ScannerConfig;
+import static net.azib.ipscan.core.ScanningSubject.PARAMETER_PING_RESULT;
+
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import net.azib.ipscan.IPScannerService;
+import net.azib.ipscan.ScannerConfig;
 import net.azib.ipscan.core.ScanningResult.ResultType;
 import net.azib.ipscan.core.ScanningSubject;
 import net.azib.ipscan.core.net.PingResult;
 import net.azib.ipscan.core.net.Pinger;
 import net.azib.ipscan.core.net.PingerRegistry;
 import net.azib.ipscan.core.values.IntegerWithUnit;
-
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import static net.azib.ipscan.core.ScanningSubject.PARAMETER_PING_RESULT;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * PingFetcher is able to ping IP addresses.
@@ -26,27 +26,21 @@ import static net.azib.ipscan.core.ScanningSubject.PARAMETER_PING_RESULT;
  *
  * @author Anton Keks
  */
-public class PingFetcher extends AbstractFetcher {
-	public static final String ID = "fetcher.ping";
-
-	private static final Logger LOG = LoggerFactory.getLogger();
-
-	private ScannerConfig config;
+@Log4j2
+@RequiredArgsConstructor
+public class PingFetcher implements Fetcher {
 
 	/** The shared pinger - this one must be static, because PingTTLFetcher will use it as well */
 	private static volatile Pinger pinger;
-	private static volatile AtomicInteger pingerUsers = new AtomicInteger();
+	private static final AtomicInteger pingerUsers = new AtomicInteger();
 
 	/** The registry used for creation of Pinger instances */
-	private PingerRegistry pingerRegistry;
+	private final PingerRegistry pingerRegistry;
+	private final ScannerConfig config;
 
-	public PingFetcher(PingerRegistry pingerRegistry, ScannerConfig scannerConfig) {
-		this.pingerRegistry = pingerRegistry;
-		this.config = scannerConfig;
-	}
-
-	public String getId() {
-		return ID;
+	@Override
+	public @NotNull IPScannerService.Fetcher getFetcherID() {
+		return IPScannerService.Fetcher.Ping;
 	}
 
 	protected PingResult executePing(ScanningSubject subject) {
@@ -59,7 +53,7 @@ public class PingFetcher extends AbstractFetcher {
 		}
 		catch (IOException e) {
 			// if this is not a timeout
-			LOG.log(Level.WARNING, "Pinging failed", e);
+			log.warn("Pinging failed", e);
 			// return an empty ping result
 			result = new PingResult(subject.getAddress(), 0);
 		}

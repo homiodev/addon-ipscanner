@@ -1,10 +1,10 @@
-package org.homio.bundle.ipscanner;
+package org.homio.addon.ipscanner;
 
+import org.homio.api.AddonConfiguration;
 import org.springframework.context.annotation.Configuration;
-import org.homio.bundle.api.BundleConfiguration;
 
 @Configuration
-@BundleConfiguration
+@AddonConfiguration
 public class IPScannerConfiguration {
 
 }
