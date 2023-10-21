@@ -5,6 +5,14 @@
  */
 package net.azib.ipscan.fetchers;
 
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
+import java.util.Iterator;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import net.azib.ipscan.IPScannerService;
 import net.azib.ipscan.ScannerConfig;
 import net.azib.ipscan.core.PortIterator;
@@ -14,15 +22,7 @@ import net.azib.ipscan.core.values.NotScanned;
 import net.azib.ipscan.core.values.NumericRangeList;
 import net.azib.ipscan.util.SequenceIterator;
 import net.azib.ipscan.util.ThreadResourceBinder;
-
-import java.io.IOException;
-import java.net.ConnectException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketTimeoutException;
-import java.util.Iterator;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import org.homio.hquery.ProgressBar;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -88,33 +88,45 @@ public class PortsFetcher implements Fetcher {
 				return false;
 			}
 
-			while (portsIterator.hasNext() && !Thread.currentThread().isInterrupted()) {
-				// TODO: UDP ports?
-				Socket socket = sockets.bind(new Socket());
-				int port = portsIterator.next();
-				try {
-					// set some optimization options
-					socket.setReuseAddress(true);
-					socket.setReceiveBufferSize(32);
-					// now connect
-					socket.connect(new InetSocketAddress(subject.getAddress(), port), portTimeout);
-					// some more options
-					socket.setSoLinger(true, 0);
-					socket.setSendBufferSize(16);
-					socket.setTcpNoDelay(true);
+			int size = portIteratorPrototype.size();
+			String address = subject.getAddress().getHostAddress();
+			ProgressBar progressBar = this.config.context.ui().progress().createProgressBar(address
+				+ "ipscanner-ports", size < 3, () -> {});
+			double delta = 100D / size, progress = 0D;
 
-					if (socket.isConnected()) openPorts.add(port);
+			try {
+				while (portsIterator.hasNext() && !Thread.currentThread().isInterrupted()) {
+					// TODO: UDP ports?
+					Socket socket = sockets.bind(new Socket());
+					int port = portsIterator.next();
+					try {
+						if (progressBar.isCancelled()) {
+							return true;
+						}
+						progressBar.progress(progress, "%s [%d]".formatted(address, port));
+						progress += delta;
+						// set some optimization options
+						socket.setReuseAddress(true);
+						socket.setReceiveBufferSize(32);
+						// now connect
+						socket.connect(new InetSocketAddress(subject.getAddress(), port), portTimeout);
+						// some more options
+						socket.setSoLinger(true, 0);
+						socket.setSendBufferSize(16);
+						socket.setTcpNoDelay(true);
+
+						if (socket.isConnected()) {openPorts.add(port);}
+					} catch (SocketTimeoutException e) {
+						filteredPorts.add(port);
+					} catch (IOException e) {
+						// connection refused
+						assert e instanceof ConnectException : e;
+					} finally {
+						sockets.closeAndUnbind(socket);
+					}
 				}
-				catch (SocketTimeoutException e) {
-					filteredPorts.add(port);
-				}
-				catch (IOException e) {
-					// connection refused
-					assert e instanceof ConnectException : e;
-				}
-				finally {
-					sockets.closeAndUnbind(socket);
-				}
+			} finally {
+				progressBar.done();
 			}
 		}
 		return true;

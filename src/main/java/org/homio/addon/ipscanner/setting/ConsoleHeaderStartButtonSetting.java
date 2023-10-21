@@ -2,7 +2,7 @@ package org.homio.addon.ipscanner.setting;
 
 import java.util.Arrays;
 import java.util.List;
-import org.homio.api.EntityContext;
+import org.homio.api.Context;
 import org.homio.api.model.Icon;
 import org.homio.api.setting.SettingPluginButton;
 import org.homio.api.setting.console.header.ConsoleHeaderSettingPlugin;
@@ -29,7 +29,7 @@ public class ConsoleHeaderStartButtonSetting implements ConsoleHeaderSettingPlug
   }
 
   @Override
-  public List<ActionInputParameter> getInputParameters(EntityContext entityContext, String value) {
+  public List<ActionInputParameter> getInputParameters(Context context, String value) {
     String prefix = HardwareUtils.MACHINE_IP_ADDRESS.substring(0, HardwareUtils.MACHINE_IP_ADDRESS.lastIndexOf(".")) + ".";
     return Arrays.asList(
         ActionInputParameter.ip("startIP", prefix + "0"),

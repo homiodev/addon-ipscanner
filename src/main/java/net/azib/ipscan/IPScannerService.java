@@ -4,7 +4,6 @@ import static java.util.Arrays.asList;
 import static net.azib.ipscan.core.state.ScanningState.IDLE;
 import static org.homio.addon.ipscanner.IPScanResultConsolePlugin.PLUGIN_NAME;
 
-import java.net.InetAddress;
 import java.security.Security;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,7 +38,7 @@ import net.azib.ipscan.fetchers.UnixMACFetcher;
 import net.azib.ipscan.fetchers.WebDetectFetcher;
 import net.azib.ipscan.fetchers.WinMACFetcher;
 import org.apache.commons.lang3.SystemUtils;
-import org.homio.api.EntityContext;
+import org.homio.api.Context;
 import org.homio.hquery.ProgressBar;
 import org.jetbrains.annotations.Nullable;
 
@@ -55,7 +54,7 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 	@Getter private final StateMachine stateMachine;
 	@Getter private final ScannerConfig scannerConfig;
 	@Getter private final IPScannerContext ipScannerContext;
-	private final EntityContext entityContext;
+	private final Context context;
 	@Getter private final FetcherRegistry fetcherRegistry;
 
 	private ScannerDispatcherThread scannerThread;
@@ -66,8 +65,8 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 	};
 
 	@SneakyThrows
-	public IPScannerService(EntityContext entityContext) {
-		this.entityContext = entityContext;
+	public IPScannerService(Context context) {
+		this.context = context;
 		this.scannerConfig = new ScannerConfig();
 		this.pingerRegistry = new PingerRegistry(scannerConfig);
 
@@ -98,10 +97,11 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 	}
 
 	@Override
-	public void updateProgress(@Nullable InetAddress currentAddress, int runningThreads, double percentageComplete) {
-		scannerConfig.progressBar.progress(percentageComplete,
-			currentAddress == null ? null : currentAddress.getHostAddress());
-		entityContext.ui().console().refreshPluginContent(PLUGIN_NAME);
+	public void updateProgress(@Nullable String msg, int runningThreads, double percentageComplete) {
+		msg = msg == null ? "IPScanner: active tasks: [%s]".formatted(runningThreads) : msg;
+		scannerConfig.progressBar.progress(percentageComplete, msg);
+		context.ui().console().refreshPluginContent(PLUGIN_NAME,
+			context.ui().console().getRegisteredPlugin(PLUGIN_NAME).getValue());
 	}
 
 	@Override
@@ -127,6 +127,7 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 	public void startScan(String startIP, String endIP, String ports, ProgressBar progressBar) {
 		scannerConfig.portString = ports;
 		scannerConfig.progressBar = progressBar;
+		scannerConfig.context = context;
 		feeder = new RangeFeeder(startIP, endIP, scannerConfig);
 		if (stateMachine.inState(IDLE)) {
 			if (!this.pingerRegistry.checkSelectedPinger())

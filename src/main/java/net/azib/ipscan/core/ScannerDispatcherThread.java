@@ -5,6 +5,14 @@
  */
 package net.azib.ipscan.core;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static net.azib.ipscan.core.state.ScanningState.KILLING;
+import static net.azib.ipscan.core.state.ScanningState.SCANNING;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import net.azib.ipscan.ScannerConfig;
 import net.azib.ipscan.core.state.ScanningState;
 import net.azib.ipscan.core.state.StateMachine;
@@ -12,16 +20,7 @@ import net.azib.ipscan.core.state.StateMachine.Transition;
 import net.azib.ipscan.core.state.StateTransitionListener;
 import net.azib.ipscan.feeders.RangeFeeder;
 import net.azib.ipscan.util.InetAddressUtils;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.jetbrains.annotations.NotNull;
-
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static net.azib.ipscan.core.state.ScanningState.KILLING;
-import static net.azib.ipscan.core.state.ScanningState.SCANNING;
 
 /**
  * Main scanning thread that spawns other threads.
@@ -30,7 +29,7 @@ import static net.azib.ipscan.core.state.ScanningState.SCANNING;
  */
 public class ScannerDispatcherThread extends Thread implements ThreadFactory, StateTransitionListener {
 
-	private static final long UI_UPDATE_INTERVAL_MS = 150;
+	private static final long UI_UPDATE_INTERVAL_MS = 1000;
 
 	private final ScannerConfig config;
 	private final Scanner scanner;
@@ -108,7 +107,7 @@ public class ScannerDispatcherThread extends Thread implements ThreadFactory, St
 					long now = System.currentTimeMillis();
 					if (now - lastNotifyTime >= UI_UPDATE_INTERVAL_MS && subject != null) {
 						lastNotifyTime = now;
-						progressCallback.updateProgress(subject.getAddress(), numActiveThreads.intValue(), feeder.getPercentageComplete());
+						progressCallback.updateProgress(subject.getAddress().getHostAddress(), numActiveThreads.intValue(), feeder.getPercentageComplete());
 					}
 				}
 			}
@@ -126,7 +125,7 @@ public class ScannerDispatcherThread extends Thread implements ThreadFactory, St
 			try {
 				// now wait for all threads, which are still running
 				while (!threadPool.awaitTermination(UI_UPDATE_INTERVAL_MS, MILLISECONDS)) {
-					progressCallback.updateProgress(null, numActiveThreads.intValue(), 100);
+					progressCallback.updateProgress(null, numActiveThreads.intValue(), 99);
 				}
 			}
 			catch (InterruptedException e) {

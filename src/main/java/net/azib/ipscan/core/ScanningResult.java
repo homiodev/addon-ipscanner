@@ -5,13 +5,14 @@
  */
 package net.azib.ipscan.core;
 
-import lombok.Getter;
-import net.azib.ipscan.fetchers.Fetcher;
-
 import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import net.azib.ipscan.fetchers.Fetcher;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * The holder of scanning result for a single IP address.
@@ -20,8 +21,11 @@ import java.util.List;
  */
 public class ScanningResult {
 
+	@Getter
+	@RequiredArgsConstructor
 	public enum ResultType {
-		UNKNOWN, DEAD, ALIVE, WITH_PORTS
+		UNKNOWN(""), DEAD("#4A3636"), ALIVE("#465A42"), WITH_PORTS("#403664");
+		private final @NotNull String color;
 	}
 
 	/** The scanned IP address */

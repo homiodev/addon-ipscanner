@@ -6,6 +6,7 @@
 package net.azib.ipscan;
 
 import org.apache.commons.lang3.SystemUtils;
+import org.homio.api.Context;
 import org.homio.hquery.ProgressBar;
 
 /**
@@ -28,4 +29,5 @@ public class ScannerConfig {
 	public int minPortTimeout = 100;
 	public boolean useRequestedPorts = true;
 	public ProgressBar progressBar;
+	public Context context;
 }

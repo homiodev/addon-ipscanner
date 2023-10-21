@@ -1,0 +1,3 @@
+{
+  "IP_SCANNER_UNABLE_STOP": "Unable to stop IpScanner. Current status: {{VALUE}}"
+}

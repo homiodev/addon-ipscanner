@@ -7,25 +7,26 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.azib.ipscan.IPScannerService;
 import net.azib.ipscan.core.ScanningResult;
 import org.homio.addon.ipscanner.IPScanResultConsolePlugin.IpAddressPluginModel;
 import org.homio.addon.ipscanner.setting.ConsoleHeaderStartButtonSetting;
 import org.homio.addon.ipscanner.setting.ConsoleHeaderStopButtonSetting;
 import org.homio.addon.ipscanner.setting.ConsoleSelectedFetchersSetting;
-import org.homio.api.EntityContext;
+import org.homio.api.Context;
 import org.homio.api.console.ConsolePluginTable;
 import org.homio.api.model.HasEntityIdentifier;
 import org.homio.api.setting.console.header.ConsoleHeaderSettingPlugin;
 import org.homio.api.ui.field.UIField;
+import org.homio.api.ui.field.color.UIFieldColorBgRef;
 
 @RequiredArgsConstructor
 public class IPScanResultConsolePlugin implements ConsolePluginTable<IpAddressPluginModel> {
 
   public static final String PLUGIN_NAME = "IpScanner";
 
-  @Getter
-  private final EntityContext entityContext;
+  private final @Getter @Accessors(fluent = true) Context context;
   private final IPScannerService ipScannerService;
 
   @Override
@@ -70,6 +71,7 @@ public class IPScanResultConsolePlugin implements ConsolePluginTable<IpAddressPl
   public static class IpAddressPluginModel implements HasEntityIdentifier {
 
     @UIField(order = 1)
+    @UIFieldColorBgRef("color")
     private String ip;
 
     @UIField(order = 2)
@@ -99,6 +101,8 @@ public class IPScanResultConsolePlugin implements ConsolePluginTable<IpAddressPl
     @UIField(order = 15)
     private ScanningResult.ResultType resultType;
 
+    private String color;
+
     public IpAddressPluginModel(IPScannerService.ResultValue resultValue) {
       this.resultType = resultValue.type;
       this.ip = resultValue.address;
@@ -110,6 +114,7 @@ public class IPScanResultConsolePlugin implements ConsolePluginTable<IpAddressPl
       this.ports = resultValue.ports;
       this.macVendorValue = resultValue.macVendorValue;
       this.macFetcherValue = resultValue.macFetcherValue;
+      this.color = resultType.getColor();
     }
 
     @Override

@@ -5,7 +5,7 @@
  */
 package net.azib.ipscan.core;
 
-import java.net.InetAddress;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * This callback is called on scanning state updates.
@@ -19,10 +19,10 @@ public interface ScanningProgressCallback {
 	 * There are no guarantees that this method is called on every
 	 * scanning iteration.
 	 *
-	 * @param currentAddress currently scanned IP address, can be null
+	 * @param message currently scanned IP address
 	 * @param runningThreads number of currently running threads
 	 * @param percentageComplete value from 0 to 100, showing how much work
 	 * 		is already done.
 	 */
-	void updateProgress(InetAddress currentAddress, int runningThreads, double percentageComplete);
+	void updateProgress(@Nullable String message, int runningThreads, double percentageComplete);
 }
