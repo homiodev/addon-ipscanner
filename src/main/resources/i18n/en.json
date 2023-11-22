@@ -20,12 +20,10 @@
   "ipscanner_ports": "Ports to scan",
   "SETTING": {
     "CONSOLE": {
+      "IpScanner": "IP Scanner",
+      "st_ConsoleScanDeadHostsSetting": "Scan dead hosts",
       "st_ConsoleSelectedFetchersSetting": "Select fetchers"
     }
-  },
-  "CONSOLE": {
-    "IpScanner": "IP Scanner",
-    "st_ConsoleScanDeadHostsSetting": "Scan dead hosts"
   },
   "W": {
     "CONFIRM": {
